@@ -2,7 +2,7 @@ name: Deployment to Server
 
 on:
   push:
-    branches: [ "Nonprod" ] # รันอัตโนมัติเมื่อบอทจาก App Repo ส่ง Tag ใหม่มาที่กิ่งนี้
+    branches: [ "Nonprod" ]
 
 jobs:
   deploy:
@@ -15,18 +15,30 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            # 1. เข้าไปที่โฟลเดอร์โปรเจกต์ (ถ้าไม่มีให้ Clone โดยระบุ Branch Nonprod)
+            # 1. เข้าไปที่โฟลเดอร์โปรเจกต์
             cd /home/apiadmin/deploy-customer-api || git clone -b Nonprod https://github.com/kitsanaphon1/deploy-customer-api.git /home/apiadmin/deploy-customer-api
             
             cd /home/apiadmin/deploy-customer-api
             
-            # 2. ดึงไฟล์ล่าสุดจากกิ่ง Nonprod (ห้ามใช้ main เพราะบอทส่งมาที่นี่)
-            git pull origin Nonprod
-            git reset --hard origin/Nonprod  # <--- บรรทัดนี้สำคัญมาก จะแก้ปัญหา v1.6 ไม่เปลี่ยน
+            # 2. บังคับให้ไฟล์บน Server ตรงกับ GitHub ล่าสุด (แก้ปัญหาเลขเวอร์ชันไม่เปลี่ยน)
+            git fetch origin Nonprod
+            git reset --hard origin/Nonprod
             
-            # 3. สั่งรัน Docker (จะดึง Image v1.8, v1.9... ตามที่ระบุใน compose)
+            # 3. สั่งรัน Docker
             docker compose pull
             docker compose up -d
             
-            # 4. ล้าง Image เก่าที่ไม่ได้ใช้งาน
+            # 4. ล้าง Image เก่า
             docker image prune -f
+
+      # ขั้นตอนใหม่: ยิงสัญญาณไปบอก Repo Import-customer-api ให้เริ่มดึง Spec และ Import เข้า Gateway
+      - name: Trigger Import Gateway Workflow
+        if: success() # ส่งสัญญาณเฉพาะเมื่อ Deploy สำเร็จเท่านั้น
+        run: |
+          curl -L \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.OPS_REPO_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            https://api.github.com/repos/kitsanaphon1/Import-customer-api/dispatches \
+            -d '{"event_type": "deploy_success"}'
