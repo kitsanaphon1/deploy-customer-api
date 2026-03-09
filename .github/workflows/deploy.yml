@@ -31,14 +31,30 @@ jobs:
             # 4. ล้าง Image เก่า
             docker image prune -f
 
-      # ขั้นตอนใหม่: ยิงสัญญาณไปบอก Repo Import-customer-api ให้เริ่มดึง Spec และ Import เข้า Gateway
+      # ขั้นตอนส่งสัญญาณพร้อม Payload ข้อมูล IP, Port และ Version
       - name: Trigger Import Gateway Workflow
-        if: success() # ส่งสัญญาณเฉพาะเมื่อ Deploy สำเร็จเท่านั้น
+        if: success()
         run: |
+          # 1. ดึงเลข Version จากไฟล์ docker-compose.yaml (เช่น v1.11)
+          # ใช้ grep และ cut เพื่อแยกเฉพาะเลขหลังเครื่องหมาย :
+          VERSION=$(grep 'image: sooyaa1/erpapi-customer:' docker-compose.yaml | head -n 1 | awk -F ':' '{print $3}')
+          
+          # 2. ดึง Port จากไฟล์ docker-compose.yaml (สมมติว่าเป็น 8000 ตามภาพของคุณ)
+          # หรือระบุ Port 8000 ไปตรงๆ ตามที่ตั้งค่าไว้
+          PORT="8000"
+          
+          # 3. ยิงสัญญาณ (Trigger) พร้อมส่งค่าใน client_payload
           curl -L \
             -X POST \
             -H "Accept: application/vnd.github+json" \
             -H "Authorization: Bearer ${{ secrets.OPS_REPO_TOKEN }}" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             https://api.github.com/repos/kitsanaphon1/Import-customer-api/dispatches \
-            -d '{"event_type": "deploy_success"}'
+            -d '{
+              "event_type": "deploy_success",
+              "client_payload": {
+                "ip": "${{ secrets.REMOTE_HOST }}",
+                "port": "'$PORT'",
+                "version": "'$VERSION'"
+              }
+            }'
