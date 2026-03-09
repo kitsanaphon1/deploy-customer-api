@@ -18,7 +18,7 @@ services:
 
   # ส่วนของ FastAPI
   api:
-    image: sooyaa1/erpapi-customer:v1.14
+    image: sooyaa1/erpapi-customer:v1.15
     container_name: fastapi-customer-api
     ports:
       - "8000:8000"
