@@ -22,6 +22,7 @@ jobs:
             
             # 2. ดึงไฟล์ล่าสุดจากกิ่ง Nonprod (ห้ามใช้ main เพราะบอทส่งมาที่นี่)
             git pull origin Nonprod
+            git reset --hard origin/Nonprod  # <--- บรรทัดนี้สำคัญมาก จะแก้ปัญหา v1.6 ไม่เปลี่ยน
             
             # 3. สั่งรัน Docker (จะดึง Image v1.8, v1.9... ตามที่ระบุใน compose)
             docker compose pull
